@@ -7,65 +7,85 @@
  * @since Version 3.0
  */
 
+use MediaWiki\Page\PageReferenceValue;
+use Wikimedia\ParamValidator\ParamValidator;
+
 /**
  * API module to review revisions
  */
 class ApiGetHeaderFooter extends ApiBase {
 
-	public function execute() {
+	/**
+	 * @inheritDoc
+	 */
+	public function __construct(
+		ApiMain $mainModule,
+		$moduleName,
+		private Parser $parser,
+		private TitleParser $titleParser
+	) {
+		parent::__construct( $mainModule, $moduleName );
+	}
 
+	public function execute() {
 		$params = $this->extractRequestParams();
-		$contextTitle = Title::newFromDBkey( $params['contexttitle'] );
-		if ( ! $contextTitle ) {
-			$this->dieWithError( "Not a valid contexttitle.", 'notarget' );
+
+		try {
+			$contextTitle = $this->titleParser->parseTitle( $params['contexttitle'] );
+			$contextTitle = PageReferenceValue::localReference(
+				$contextTitle->getNamespace(),
+				$contextTitle->getDBkey()
+			);
+		} catch ( MalformedTitleException $e ) {
+			$this->dieWithError( new RawMessage( "Not a valid contexttitle." ), 'notarget' );
 		}
 
 		$messageId = $params['messageid'];
 
-		$messageText = wfMessage( $messageId )->title( $contextTitle )->text();
+		$messageText = $this->msg( $messageId )->page( $contextTitle )->text();
 
 		// don't need to bother if there is no content.
 		if ( empty( $messageText ) ) {
 			$messageText = '';
 		}
 
-		if ( wfMessage( $messageId )->inContentLanguage()->isBlank() ) {
+		if ( $this->msg( $messageId )->inContentLanguage()->isBlank() ) {
 			$messageText = '';
 		}
 
-		global $wgParser;
-
-		$messageText = $wgParser->parse(
+		$messageText = $this->parser->parse(
 			$messageText,
 			$contextTitle,
-			ParserOptions::newFromUser( $this->getUser() )
+			ParserOptions::newFromContext( $this )
 		)->getText();
 
-		$this->getResult()->addValue( null, $this->getModuleName(), array( 'result' => $messageText ) );
-
-	}
-
-	public function getAllowedParams() {
-		return array(
-			'contexttitle' => array(
-				ApiBase::PARAM_REQUIRED => true,
-				ApiBase::PARAM_TYPE => 'string'
-			),
-			'messageid' => array(
-				ApiBase::PARAM_REQUIRED => true,
-				ApiBase::PARAM_TYPE => 'string'
-			)
-		);
+		$this->getResult()->addValue( null, $this->getModuleName(), [ 'result' => $messageText ] );
 	}
 
 	/**
-	 * @see ApiBase::getExamplesMessages()
+	 * @inheritDoc
+	 */
+	public function getAllowedParams() {
+		return [
+			'contexttitle' => [
+				ParamValidator::PARAM_REQUIRED => true,
+				ParamValidator::PARAM_TYPE => 'string'
+			],
+			'messageid' => [
+				ParamValidator::PARAM_REQUIRED => true,
+				ParamValidator::PARAM_TYPE => 'string'
+			]
+		];
+	}
+
+	/**
+	 * @inheritDoc
 	 */
 	protected function getExamplesMessages() {
-		return array(
+		return [
 			'action=getheaderfooter&contexttitle=Main_Page&messageid=Hf-nsfooter-'
 				=> 'apihelp-getheaderfooter-example-1',
-		);
+		];
 	}
 
 	public function mustBePosted() {
