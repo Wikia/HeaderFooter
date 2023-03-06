@@ -6,15 +6,24 @@
 	"descriptionmsg": "headerfooter-desc",
 	"type": "other",
 	"AutoloadClasses": {
-		"HeaderFooter": "HeaderFooter.class.php",
+		"HeaderFooter": "HeaderFooter.php",
 		"ApiGetHeaderFooter": "ApiGetHeaderFooter.php"
 	},
 	"APIModules": {
-		"getheaderfooter": "ApiGetHeaderFooter"
+		"getheaderfooter": {
+			"class": "ApiGetHeaderFooter",
+			"services": ["Parser", "TitleParser"]
+		}
+	},
+	"HookHandlers": {
+		"main": {
+			"class": "HeaderFooter",
+			"services": ["MainConfig"]
+		}
 	},
 	"Hooks": {
-		"OutputPageParserOutput": "HeaderFooter::hOutputPageParserOutput",
-		"ResourceLoaderGetConfigVars": "HeaderFooter::onResourceLoaderGetConfigVars"
+		"OutputPageParserOutput": "main",
+		"ResourceLoaderGetConfigVars": "main"
 	},
 	"MessagesDirs": {
 		"HeaderFooter": [
@@ -33,9 +42,15 @@
 		}
 	},
 	"config": {
-		"_prefix": "eg",
-		"HeaderFooterEnableAsyncHeader": false,
-		"HeaderFooterEnableAsyncFooter": false
+		"HeaderFooterEnableAsyncHeader": {
+			"value": false
+		},
+		"HeaderFooterEnableAsyncFooter": {
+			"value": false
+		}
 	},
-	"manifest_version": 1
+	"manifest_version": 2,
+	"requires": {
+		"MediaWiki": ">= 1.39.0"
+	}
 }
