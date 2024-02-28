@@ -226,6 +226,9 @@ class HeaderFooterTest extends MediaWikiUnitTestCase {
 			'HeaderFooterEnableAsyncFooter' => false
 		];
 
-		return new HeaderFooter( new HashConfig( $configOverrides + $configDefaults ) );
+		return new HeaderFooter(
+			new HashConfig( $configOverrides + $configDefaults ),
+			WANObjectCache::newEmpty()
+		);
 	}
 }

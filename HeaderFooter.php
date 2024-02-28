@@ -16,7 +16,7 @@ class HeaderFooter implements OutputPageParserOutputHook, ResourceLoaderGetConfi
 
 	private ServiceOptions $options;
 
-	public function __construct( Config $config ) {
+	public function __construct( Config $config, private WANObjectCache $cache ) {
 		$this->options = new ServiceOptions( self::CONSTRUCTOR_OPTIONS, $config );
 		$this->options->assertRequiredOptions( self::CONSTRUCTOR_OPTIONS );
 	}
@@ -98,14 +98,19 @@ class HeaderFooter implements OutputPageParserOutputHook, ResourceLoaderGetConfi
 			return Html::element( 'div', $attributes );
 		} else {
 			$msg = $msgLocalizer->msg( $msgId );
-			$msgText = $msg->parse();
 
-			// don't need to bother if there is no content.
-			if ( empty( $msgText ) ) {
+			if ( $msg->inContentLanguage()->isBlank() ) {
 				return '';
 			}
 
-			if ( $msg->inContentLanguage()->isBlank() ) {
+			$msgText = $this->cache->getWithSetCallback(
+				$this->cache->makeKey( 'HeaderFooter', $class, md5( $msgId ) ),
+				15 * WANObjectCache::TTL_MINUTE,
+				fn () => $msg->parse()
+			);
+
+			// don't need to bother if there is no content.
+			if ( empty( $msgText ) ) {
 				return '';
 			}
 
